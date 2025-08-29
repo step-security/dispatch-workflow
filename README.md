@@ -9,12 +9,6 @@ There was a need for this action as currently available actions...
 - Support the `workflow_dispatch` or `repository_dispatch` event, **but not both**
 - Use Run ID extraction algorithms that are either **API-intensive** or **unreliable** on repositories that experience a high velocity of workflows
 
-# Acknowledgements
-
-This GitHub Action is a fork of [`codex-/return-dispatch`](https://github.com/codex-/return-dispatch). This action supported the ability to extract a Run ID, but exclusively supported the `workflow_dispatch` method. I decided to fork this action as it had an intuitive code-base and excellent testing philosophy.
-
-From a **compatibility** and **performance** perspective, this GitHub Action superseedes [`codex-/return-dispatch`](https://github.com/codex-/return-dispatch), as it additionally supports the `repository_dispatch` method and uses a more efficient algorithm to extract the Run ID for a dispatched workflow
-
 # Usage
 
 ## Creating Dispatch Events
@@ -184,14 +178,14 @@ Dispatching a Workflow requires an authenticated `GITHUB_TOKEN`. The required pe
 
 ## Generating a `GITHUB_TOKEN`
 
-There are also multiple methods of generating `GITHUB_TOKEN`. If you are dispatching a workflow from the **current repository**, a **GitHub Actions Token** would be the most secure option. If you are dispatching a workflow to a **remote repository**, I would personally recommend a **GitHub App Token**. GitHub App Tokens are ephemeral (valid for 1 hour) and have fine grained access control over permissions and repositories. Additionally they are not bound to a particular developers identity, unlike a Personal Access Token.
+There are also multiple methods of generating `GITHUB_TOKEN`. If you are dispatching a workflow from the **current repository**, a **GitHub Actions Token** would be the most secure option. If you are dispatching a workflow to a **remote repository**, We would personally recommend a **GitHub App Token**. GitHub App Tokens are ephemeral (valid for 1 hour) and have fine grained access control over permissions and repositories. Additionally they are not bound to a particular developers identity, unlike a Personal Access Token.
 
 - Fine Grained Tokens
   - [GitHub Actions Token](https://docs.github.com/en/actions/security-guides/automatic-token-authentication)
   - [GitHub App Token](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/making-authenticated-api-requests-with-a-github-app-in-a-github-actions-workflow)
   - [Personal Access Token 🆕](https://github.blog/2022-10-18-introducing-fine-grained-personal-access-tokens-for-github/)
 - Personal Access Tokens (Classic)
-  - I would **strongly** advise using this as they are not as secure as it's [fine-grained replacement](https://github.blog/2022-10-18-introducing-fine-grained-personal-access-tokens-for-github/) and can potentially be configured without an expiry time.
+  - We would **strongly** advise using this as they are not as secure as it's [fine-grained replacement](https://github.blog/2022-10-18-introducing-fine-grained-personal-access-tokens-for-github/) and can potentially be configured without an expiry time.
 
 The below table shows the neccessary permissions for all the unique combinations of these factors. If using a Fine Grained Token, ensure that the permissions correspond to the repository that contains the workflow you are attempting to dispatch.
 

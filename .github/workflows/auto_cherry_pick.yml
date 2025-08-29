@@ -7,6 +7,11 @@ on:
         description: "Base branch to create the PR against"
         required: true
         default: "main"
+      script:
+        description: "Specify the build script to run"
+        required: false
+        type: string
+        default: "npm run all"
 
 permissions:
   contents: write
@@ -21,3 +26,4 @@ jobs:
       original-owner: "lasith-kg"
       repo-name: "dispatch-workflow"
       base_branch: ${{ inputs.base_branch }}
+      script: ${{ inputs.script || 'npm run all' }}
