@@ -1,0 +1,32 @@
+name: 'Build and Test'
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+
+jobs:  
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: nvmrc 
+        name: Extract Node.JS Version
+        shell: bash
+        run: |
+          echo "node-version=$(cat .nvmrc)" >> "${GITHUB_OUTPUT}"
+      - name: Set Node.JS
+        uses: actions/setup-node@v4
+        with:
+          node-version: "${{ steps.nvmrc.outputs.node-version }}"
+      - id: clean-dist
+        shell: bash
+        run: |
+          # Clean the existing dist/ folder so that we only test fresh
+          # compiled code
+          rm -rf dist/
+      - run: |
+          npm ci
+      - run: |
+          npm run all
