@@ -12,6 +12,13 @@ on:
         required: false
         type: string
         default: "npm run all"
+      mode:
+        description: 'Run mode: cherry-pick or verify'
+        required: false
+        default: 'cherry-pick'
+
+  pull_request:
+    types: [opened, synchronize, labeled]
 
 permissions:
   contents: write
@@ -21,9 +28,12 @@ permissions:
 
 jobs:
   cherry-pick:
+    if: github.event_name == 'workflow_dispatch' || contains(fromJson(toJson(github.event.pull_request.labels)).*.name, 'review-required')
     uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@v1
     with:
       original-owner: "lasith-kg"
       repo-name: "dispatch-workflow"
       base_branch: ${{ inputs.base_branch }}
       script: ${{ inputs.script || 'npm run all' }}
+      mode: ${{ github.event_name == 'pull_request' && 'verify' || inputs.mode }}
+  
