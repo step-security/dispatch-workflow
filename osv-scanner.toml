@@ -1,0 +1,19 @@
+[[IgnoredVulns]]
+id = "GHSA-2mjp-6q6p-2qxm"
+reason = "Transitive dep of @actions/github, only used to make GitHub API calls within the Actions runner. Not exposed to untrusted input or used in production code."
+
+[[IgnoredVulns]]
+id = "GHSA-4992-7rv2-5pvq"
+reason = "Transitive dep of @actions/github, only used to make GitHub API calls within the Actions runner. Not exposed to untrusted input or used in production code."
+
+[[IgnoredVulns]]
+id = "GHSA-g9mf-h72j-4rw9"
+reason = "Transitive dep of @actions/github, only used to make GitHub API calls within the Actions runner. Not exposed to untrusted input or used in production code."
+
+[[IgnoredVulns]]
+id = "GHSA-v9p9-hfj2-hcw8"
+reason = "Transitive dep of @actions/github, only used to make GitHub API calls within the Actions runner. Not exposed to untrusted input or used in production code."
+
+[[IgnoredVulns]]
+id = "GHSA-vrm6-8vpv-qv8q"
+reason = "Transitive dep of @actions/github, only used to make GitHub API calls within the Actions runner. Not exposed to untrusted input or used in production code."
