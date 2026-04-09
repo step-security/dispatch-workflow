@@ -1,3 +1,5 @@
+[![StepSecurity Maintained Action](https://raw.githubusercontent.com/step-security/maintained-actions-assets/main/assets/maintained-action-banner.png)](https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions)
+
 # GitHub Action for Dispatching Workflows
 
 A **universal** action that supports dispatching workflows with either the `workflow_dispatch` or `repository_dispatch` event. Additionally, this action can be configured to **discover** the Run ID of a dispatched workflow through a **efficient** and **accurate** correlation algorithm.
