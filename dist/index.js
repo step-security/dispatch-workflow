@@ -263,15 +263,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
 var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getDefaultBranch = exports.getWorkflowRuns = exports.getWorkflowId = exports.repositoryDispatch = exports.workflowDispatch = exports.init = void 0;
 const core = __importStar(__nccwpck_require__(2186));
@@ -285,151 +276,152 @@ function init(cfg) {
     octokit = github.getOctokit(config.token);
 }
 exports.init = init;
-function workflowDispatch(distinctId) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const inputs = Object.assign(Object.assign({}, config.workflowInputs), (config.discover ? { distinct_id: distinctId } : undefined));
-        if (!config.workflow) {
-            throw new Error(`workflow_dispatch: An input to 'workflow' was not provided`);
-        }
-        if (!config.ref) {
-            throw new Error(`workflow_dispatch: An input to 'ref' was not provided`);
-        }
-        // GitHub released a breaking change to the createWorkflowDispatch API that resulted in a change where the returned
-        // status code changed to 200, from 204. At the time, the @octokit/types had not been updated to reflect this change.
-        //
-        // Given that we are in an interim state where the API behaviour, but the public documentation has not been updated
-        // to reflect this change, and GitHub has not yet released any updates on this topic. I can going to play the safe
-        // route and assume that the response status code could be either 200 or 204.
-        //
-        // Reference:     https://github.com/orgs/community/discussions/9752#discussioncomment-15295321
-        // Documentation: https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
-        const response = (yield octokit.rest.actions.createWorkflowDispatch({
-            owner: config.owner,
-            repo: config.repo,
-            workflow_id: config.workflow,
-            ref: config.ref,
-            inputs
-        }));
-        if (response.status !== 200 && response.status !== 204) {
-            throw new Error(`workflow_dispatch: Failed to dispatch action, expected 200 or 204 but received ${response.status}`);
-        }
-        core.info(`✅ Successfully dispatched workflow using workflow_dispatch method:
+async function workflowDispatch(distinctId) {
+    const inputs = {
+        ...config.workflowInputs,
+        ...(config.discover ? { distinct_id: distinctId } : undefined)
+    };
+    if (!config.workflow) {
+        throw new Error(`workflow_dispatch: An input to 'workflow' was not provided`);
+    }
+    if (!config.ref) {
+        throw new Error(`workflow_dispatch: An input to 'ref' was not provided`);
+    }
+    // GitHub released a breaking change to the createWorkflowDispatch API that resulted in a change where the returned
+    // status code changed to 200, from 204. At the time, the @octokit/types had not been updated to reflect this change.
+    //
+    // Given that we are in an interim state where the API behaviour, but the public documentation has not been updated
+    // to reflect this change, and GitHub has not yet released any updates on this topic. I can going to play the safe
+    // route and assume that the response status code could be either 200 or 204.
+    //
+    // Reference:     https://github.com/orgs/community/discussions/9752#discussioncomment-15295321
+    // Documentation: https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
+    const response = (await octokit.rest.actions.createWorkflowDispatch({
+        owner: config.owner,
+        repo: config.repo,
+        workflow_id: config.workflow,
+        ref: config.ref,
+        inputs
+    }));
+    if (response.status !== 200 && response.status !== 204) {
+        throw new Error(`workflow_dispatch: Failed to dispatch action, expected 200 or 204 but received ${response.status}`);
+    }
+    core.info(`✅ Successfully dispatched workflow using workflow_dispatch method:
     repository: ${config.owner}/${config.repo}
     branch: ${config.ref}
     workflow-id: ${config.workflow}
     distinct-id: ${distinctId}
     workflow-inputs: ${JSON.stringify(inputs)}`);
-    });
 }
 exports.workflowDispatch = workflowDispatch;
-function repositoryDispatch(distinctId) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const clientPayload = Object.assign(Object.assign({}, config.workflowInputs), (config.discover ? { distinct_id: distinctId } : undefined));
-        if (!config.eventType) {
-            throw new Error(`repository_dispatch: An input to 'event-type' was not provided`);
-        }
-        // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
-        const response = yield octokit.rest.repos.createDispatchEvent({
-            owner: config.owner,
-            repo: config.repo,
-            event_type: config.eventType,
-            client_payload: clientPayload
-        });
-        if (response.status !== 204) {
-            throw new Error(`repository_dispatch: Failed to dispatch action, expected 204 but received ${response.status}`);
-        }
-        core.info(`✅ Successfully dispatched workflow using repository_dispatch method:
+async function repositoryDispatch(distinctId) {
+    const clientPayload = {
+        ...config.workflowInputs,
+        ...(config.discover ? { distinct_id: distinctId } : undefined)
+    };
+    if (!config.eventType) {
+        throw new Error(`repository_dispatch: An input to 'event-type' was not provided`);
+    }
+    // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
+    const response = await octokit.rest.repos.createDispatchEvent({
+        owner: config.owner,
+        repo: config.repo,
+        event_type: config.eventType,
+        client_payload: clientPayload
+    });
+    if (response.status !== 204) {
+        throw new Error(`repository_dispatch: Failed to dispatch action, expected 204 but received ${response.status}`);
+    }
+    core.info(`✅ Successfully dispatched workflow using repository_dispatch method:
     repository: ${config.owner}/${config.repo}
     event-type: ${config.eventType}
     distinct-id: ${distinctId}
     client-payload: ${JSON.stringify(clientPayload)}`);
-    });
 }
 exports.repositoryDispatch = repositoryDispatch;
-function getWorkflowId(workflowFilename) {
-    return __awaiter(this, void 0, void 0, function* () {
-        // https://docs.github.com/en/rest/reference/actions#list-repository-workflows
-        const response = yield octokit.rest.actions.listRepoWorkflows({
-            owner: config.owner,
-            repo: config.repo
-        });
-        if (response.status !== 200) {
-            throw new Error(`Failed to get workflows, expected 200 but received ${response.status}`);
-        }
-        const workflow = response.data.workflows.find(workflow => workflow.path.includes(workflowFilename));
-        if (!workflow) {
-            throw new Error(`getWorkflowId: Unable to find ID for Workflow: ${workflowFilename}`);
-        }
-        return workflow.id;
+async function getWorkflowId(workflowFilename) {
+    // https://docs.github.com/en/rest/reference/actions#list-repository-workflows
+    const response = await octokit.rest.actions.listRepoWorkflows({
+        owner: config.owner,
+        repo: config.repo
     });
+    if (response.status !== 200) {
+        throw new Error(`Failed to get workflows, expected 200 but received ${response.status}`);
+    }
+    const workflow = response.data.workflows.find(workflow => workflow.path.includes(workflowFilename));
+    if (!workflow) {
+        throw new Error(`getWorkflowId: Unable to find ID for Workflow: ${workflowFilename}`);
+    }
+    return workflow.id;
 }
 exports.getWorkflowId = getWorkflowId;
-function getWorkflowRuns() {
-    return __awaiter(this, void 0, void 0, function* () {
-        let status;
-        let branchName;
-        let response;
-        if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
-            branchName = (0, utils_1.getBranchNameFromRef)(config.ref);
-            if (!config.workflow) {
-                throw new Error(`An input to 'workflow' was not provided`);
-            }
-            // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow
-            response = yield octokit.rest.actions.listWorkflowRuns(Object.assign({ owner: config.owner, repo: config.repo, workflow_id: config.workflow }, (branchName
+async function getWorkflowRuns() {
+    let status;
+    let branchName;
+    let response;
+    if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
+        branchName = (0, utils_1.getBranchNameFromRef)(config.ref);
+        if (!config.workflow) {
+            throw new Error(`An input to 'workflow' was not provided`);
+        }
+        // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow
+        response = await octokit.rest.actions.listWorkflowRuns({
+            owner: config.owner,
+            repo: config.repo,
+            workflow_id: config.workflow,
+            ...(branchName
                 ? {
                     branch: branchName,
                     per_page: 5
                 }
                 : {
                     per_page: 10
-                })));
-            status = response.status;
-        }
-        else {
-            // repository_dipsatch can only be triggered from the default branch
-            const branchName = yield getDefaultBranch();
-            // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository
-            response = yield octokit.rest.actions.listWorkflowRunsForRepo({
-                owner: config.owner,
-                repo: config.repo,
-                branch: branchName,
-                event: action_1.DispatchMethod.RepositoryDispatch,
-                per_page: 5
-            });
-            status = response.status;
-        }
-        if (status !== 200) {
-            throw new Error(`getWorkflowRuns: Failed to get workflow runs, expected 200 but received ${status}`);
-        }
-        const workflowRuns = response.data.workflow_runs.map(workflowRun => ({
-            id: workflowRun.id,
-            name: workflowRun.name || '',
-            htmlUrl: workflowRun.html_url
-        }));
-        core.debug(`
+                })
+        });
+        status = response.status;
+    }
+    else {
+        // repository_dipsatch can only be triggered from the default branch
+        const branchName = await getDefaultBranch();
+        // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository
+        response = await octokit.rest.actions.listWorkflowRunsForRepo({
+            owner: config.owner,
+            repo: config.repo,
+            branch: branchName,
+            event: action_1.DispatchMethod.RepositoryDispatch,
+            per_page: 5
+        });
+        status = response.status;
+    }
+    if (status !== 200) {
+        throw new Error(`getWorkflowRuns: Failed to get workflow runs, expected 200 but received ${status}`);
+    }
+    const workflowRuns = response.data.workflow_runs.map(workflowRun => ({
+        id: workflowRun.id,
+        name: workflowRun.name || '',
+        htmlUrl: workflowRun.html_url
+    }));
+    core.debug(`
 Fetched Workflow Runs
 Repository: ${config.owner}/${config.repo}
 Branch: ${branchName || 'undefined'}
 Runs Fetched: [${workflowRuns.map(workflowRun => workflowRun.id)}]`);
-        return workflowRuns;
-    });
+    return workflowRuns;
 }
 exports.getWorkflowRuns = getWorkflowRuns;
-function getDefaultBranch() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const response = yield octokit.rest.repos.get({
-            owner: config.owner,
-            repo: config.repo
-        });
-        if (response.status !== 200) {
-            throw new Error(`getDefaultBranch: Failed to get repository information, expected 200 but received ${response.status}`);
-        }
-        core.debug(`
+async function getDefaultBranch() {
+    const response = await octokit.rest.repos.get({
+        owner: config.owner,
+        repo: config.repo
+    });
+    if (response.status !== 200) {
+        throw new Error(`getDefaultBranch: Failed to get repository information, expected 200 but received ${response.status}`);
+    }
+    core.debug(`
 Fetched Repository Information
 Repository: ${config.owner}/${config.repo}
 Default Branch: ${response.data.default_branch}`);
-        return response.data.default_branch;
-    });
+    return response.data.default_branch;
 }
 exports.getDefaultBranch = getDefaultBranch;
 __exportStar(__nccwpck_require__(5724), exports);
@@ -465,17 +457,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
+const fs = __importStar(__nccwpck_require__(7147));
 const exponential_backoff_1 = __nccwpck_require__(3183);
 const uuid_1 = __nccwpck_require__(5840);
 const action_1 = __nccwpck_require__(6791);
@@ -483,76 +467,91 @@ const api = __importStar(__nccwpck_require__(5614));
 const utils_1 = __nccwpck_require__(1606);
 const axios_1 = __importStar(__nccwpck_require__(8757));
 const DISTINCT_ID = (0, uuid_1.v4)();
-function validateSubscription() {
-    var _a;
-    return __awaiter(this, void 0, void 0, function* () {
-        const API_URL = `https://agent.api.stepsecurity.io/v1/github/${process.env.GITHUB_REPOSITORY}/actions/subscription`;
-        try {
-            yield axios_1.default.get(API_URL, { timeout: 3000 });
+async function validateSubscription() {
+    const eventPath = process.env.GITHUB_EVENT_PATH;
+    let repoPrivate;
+    if (eventPath && fs.existsSync(eventPath)) {
+        const eventData = JSON.parse(fs.readFileSync(eventPath, 'utf8'));
+        repoPrivate = eventData?.repository?.private;
+    }
+    const upstream = 'lasith-kg/dispatch-workflow';
+    const action = process.env.GITHUB_ACTION_REPOSITORY;
+    const docsUrl = 'https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions';
+    core.info('');
+    core.info('\u001b[1;36mStepSecurity Maintained Action\u001b[0m');
+    core.info(`Secure drop-in replacement for ${upstream}`);
+    if (repoPrivate === false)
+        core.info('\u001b[32m\u2713 Free for public repositories\u001b[0m');
+    core.info(`\u001b[36mLearn more:\u001b[0m ${docsUrl}`);
+    core.info('');
+    if (repoPrivate === false)
+        return;
+    const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com';
+    const body = { action: action || '' };
+    if (serverUrl !== 'https://github.com')
+        body.ghes_server = serverUrl;
+    try {
+        await axios_1.default.post(`https://agent.api.stepsecurity.io/v1/github/${process.env.GITHUB_REPOSITORY}/actions/maintained-actions-subscription`, body, { timeout: 3000 });
+    }
+    catch (error) {
+        if ((0, axios_1.isAxiosError)(error) && error.response?.status === 403) {
+            core.error(`\u001b[1;31mThis action requires a StepSecurity subscription for private repositories.\u001b[0m`);
+            core.error(`\u001b[31mLearn how to enable a subscription: ${docsUrl}\u001b[0m`);
+            process.exit(1);
         }
-        catch (error) {
-            if ((0, axios_1.isAxiosError)(error) && ((_a = error.response) === null || _a === void 0 ? void 0 : _a.status) === 403) {
-                core.error('Subscription is not valid. Reach out to support@stepsecurity.io');
-                process.exit(1);
-            }
-            else {
-                core.info('Timeout or API not reachable. Continuing to next step.');
-            }
-        }
-    });
+        core.info('Timeout or API not reachable. Continuing to next step.');
+    }
 }
-function run() {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            yield validateSubscription();
-            const config = (0, action_1.getConfig)();
-            api.init(config);
-            const backoffOptions = (0, action_1.getBackoffOptions)(config);
-            // Display Exponential Backoff Options (if debug mode is enabled)
-            core.info(`🔄 Exponential backoff parameters:
+async function run() {
+    try {
+        await validateSubscription();
+        const config = (0, action_1.getConfig)();
+        api.init(config);
+        const backoffOptions = (0, action_1.getBackoffOptions)(config);
+        // Display Exponential Backoff Options (if debug mode is enabled)
+        core.info(`🔄 Exponential backoff parameters:
     starting-delay: ${backoffOptions.startingDelay}
     max-attempts: ${backoffOptions.numOfAttempts}
     time-multiple: ${backoffOptions.timeMultiple}`);
-            // Get the workflow ID if give a string
-            if (typeof config.workflow === 'string') {
-                const workflowFileName = config.workflow;
-                core.info(`⌛ Fetching workflow id for ${workflowFileName}`);
-                const workflowId = yield (0, exponential_backoff_1.backOff)(() => __awaiter(this, void 0, void 0, function* () { return api.getWorkflowId(workflowFileName); }), backoffOptions);
-                core.info(`✅ Fetched workflow id: ${workflowId}`);
-                config.workflow = workflowId;
-            }
-            // Dispatch the action using the chosen dispatch method
-            if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
-                yield api.workflowDispatch(DISTINCT_ID);
-            }
-            else {
-                yield api.repositoryDispatch(DISTINCT_ID);
-            }
-            // Exit Early Early if discover is disabled
-            if (!config.discover) {
-                core.info('✅ Workflow dispatched! Skipping the retrieval of the run-id');
-                return;
-            }
-            core.info(`⌛ Fetching run-ids for workflow with distinct-id=${DISTINCT_ID}`);
-            const dispatchedWorkflowRun = yield (0, exponential_backoff_1.backOff)(() => __awaiter(this, void 0, void 0, function* () {
-                const workflowRuns = yield api.getWorkflowRuns();
-                const dispatchedWorkflowRun = (0, utils_1.getDispatchedWorkflowRun)(workflowRuns, DISTINCT_ID);
-                return dispatchedWorkflowRun;
-            }), backoffOptions);
-            core.info(`✅ Successfully identified remote run:
+        // Get the workflow ID if give a string
+        if (typeof config.workflow === 'string') {
+            const workflowFileName = config.workflow;
+            core.info(`⌛ Fetching workflow id for ${workflowFileName}`);
+            const workflowId = await (0, exponential_backoff_1.backOff)(async () => api.getWorkflowId(workflowFileName), backoffOptions);
+            core.info(`✅ Fetched workflow id: ${workflowId}`);
+            config.workflow = workflowId;
+        }
+        // Dispatch the action using the chosen dispatch method
+        if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
+            await api.workflowDispatch(DISTINCT_ID);
+        }
+        else {
+            await api.repositoryDispatch(DISTINCT_ID);
+        }
+        // Exit Early Early if discover is disabled
+        if (!config.discover) {
+            core.info('✅ Workflow dispatched! Skipping the retrieval of the run-id');
+            return;
+        }
+        core.info(`⌛ Fetching run-ids for workflow with distinct-id=${DISTINCT_ID}`);
+        const dispatchedWorkflowRun = await (0, exponential_backoff_1.backOff)(async () => {
+            const workflowRuns = await api.getWorkflowRuns();
+            const dispatchedWorkflowRun = (0, utils_1.getDispatchedWorkflowRun)(workflowRuns, DISTINCT_ID);
+            return dispatchedWorkflowRun;
+        }, backoffOptions);
+        core.info(`✅ Successfully identified remote run:
     run-id: ${dispatchedWorkflowRun.id}
     run-url: ${dispatchedWorkflowRun.htmlUrl}`);
-            core.setOutput(action_1.ActionOutputs.RunId, dispatchedWorkflowRun.id);
-            core.setOutput(action_1.ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl);
+        core.setOutput(action_1.ActionOutputs.RunId, dispatchedWorkflowRun.id);
+        core.setOutput(action_1.ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl);
+    }
+    catch (error) {
+        if (error instanceof Error) {
+            core.warning('🟠 Does the token have the correct permissions?');
+            error.stack && core.debug(error.stack);
+            core.setFailed(`🔴 Failed to complete: ${error.message}`);
         }
-        catch (error) {
-            if (error instanceof Error) {
-                core.warning('🟠 Does the token have the correct permissions?');
-                error.stack && core.debug(error.stack);
-                core.setFailed(`🔴 Failed to complete: ${error.message}`);
-            }
-        }
-    });
+    }
 }
 run();
 
@@ -37335,14 +37334,17 @@ function useColors() {
 		return false;
 	}
 
+	let m;
+
 	// Is webkit? http://stackoverflow.com/a/16459606/376773
 	// document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
+	// eslint-disable-next-line no-return-assign
 	return (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance) ||
 		// Is firebug? http://stackoverflow.com/a/398120/376773
 		(typeof window !== 'undefined' && window.console && (window.console.firebug || (window.console.exception && window.console.table))) ||
 		// Is firefox >= v31?
 		// https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
-		(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31) ||
+		(typeof navigator !== 'undefined' && navigator.userAgent && (m = navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/)) && parseInt(m[1], 10) >= 31) ||
 		// Double check webkit in userAgent just in case we are in a worker
 		(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/));
 }
@@ -37426,7 +37428,7 @@ function save(namespaces) {
 function load() {
 	let r;
 	try {
-		r = exports.storage.getItem('debug');
+		r = exports.storage.getItem('debug') || exports.storage.getItem('DEBUG') ;
 	} catch (error) {
 		// Swallow
 		// XXX (@Qix-) should we be logging these?
@@ -37652,24 +37654,62 @@ function setup(env) {
 		createDebug.names = [];
 		createDebug.skips = [];
 
-		let i;
-		const split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
-		const len = split.length;
+		const split = (typeof namespaces === 'string' ? namespaces : '')
+			.trim()
+			.replace(/\s+/g, ',')
+			.split(',')
+			.filter(Boolean);
 
-		for (i = 0; i < len; i++) {
-			if (!split[i]) {
-				// ignore empty strings
-				continue;
-			}
-
-			namespaces = split[i].replace(/\*/g, '.*?');
-
-			if (namespaces[0] === '-') {
-				createDebug.skips.push(new RegExp('^' + namespaces.slice(1) + '$'));
+		for (const ns of split) {
+			if (ns[0] === '-') {
+				createDebug.skips.push(ns.slice(1));
 			} else {
-				createDebug.names.push(new RegExp('^' + namespaces + '$'));
+				createDebug.names.push(ns);
 			}
 		}
+	}
+
+	/**
+	 * Checks if the given string matches a namespace template, honoring
+	 * asterisks as wildcards.
+	 *
+	 * @param {String} search
+	 * @param {String} template
+	 * @return {Boolean}
+	 */
+	function matchesTemplate(search, template) {
+		let searchIndex = 0;
+		let templateIndex = 0;
+		let starIndex = -1;
+		let matchIndex = 0;
+
+		while (searchIndex < search.length) {
+			if (templateIndex < template.length && (template[templateIndex] === search[searchIndex] || template[templateIndex] === '*')) {
+				// Match character or proceed with wildcard
+				if (template[templateIndex] === '*') {
+					starIndex = templateIndex;
+					matchIndex = searchIndex;
+					templateIndex++; // Skip the '*'
+				} else {
+					searchIndex++;
+					templateIndex++;
+				}
+			} else if (starIndex !== -1) { // eslint-disable-line no-negated-condition
+				// Backtrack to the last '*' and try to match more characters
+				templateIndex = starIndex + 1;
+				matchIndex++;
+				searchIndex = matchIndex;
+			} else {
+				return false; // No match
+			}
+		}
+
+		// Handle trailing '*' in template
+		while (templateIndex < template.length && template[templateIndex] === '*') {
+			templateIndex++;
+		}
+
+		return templateIndex === template.length;
 	}
 
 	/**
@@ -37680,8 +37720,8 @@ function setup(env) {
 	*/
 	function disable() {
 		const namespaces = [
-			...createDebug.names.map(toNamespace),
-			...createDebug.skips.map(toNamespace).map(namespace => '-' + namespace)
+			...createDebug.names,
+			...createDebug.skips.map(namespace => '-' + namespace)
 		].join(',');
 		createDebug.enable('');
 		return namespaces;
@@ -37695,39 +37735,19 @@ function setup(env) {
 	* @api public
 	*/
 	function enabled(name) {
-		if (name[name.length - 1] === '*') {
-			return true;
-		}
-
-		let i;
-		let len;
-
-		for (i = 0, len = createDebug.skips.length; i < len; i++) {
-			if (createDebug.skips[i].test(name)) {
+		for (const skip of createDebug.skips) {
+			if (matchesTemplate(name, skip)) {
 				return false;
 			}
 		}
 
-		for (i = 0, len = createDebug.names.length; i < len; i++) {
-			if (createDebug.names[i].test(name)) {
+		for (const ns of createDebug.names) {
+			if (matchesTemplate(name, ns)) {
 				return true;
 			}
 		}
 
 		return false;
-	}
-
-	/**
-	* Convert regexp to namespace
-	*
-	* @param {RegExp} regxep
-	* @return {String} namespace
-	* @api private
-	*/
-	function toNamespace(regexp) {
-		return regexp.toString()
-			.substring(2, regexp.toString().length - 2)
-			.replace(/\.\*\?$/, '*');
 	}
 
 	/**
@@ -37971,11 +37991,11 @@ function getDate() {
 }
 
 /**
- * Invokes `util.format()` with the specified arguments and writes to stderr.
+ * Invokes `util.formatWithOptions()` with the specified arguments and writes to stderr.
  */
 
 function log(...args) {
-	return process.stderr.write(util.format(...args) + '\n');
+	return process.stderr.write(util.formatWithOptions(exports.inspectOpts, ...args) + '\n');
 }
 
 /**
@@ -41094,7 +41114,7 @@ var y = d * 365.25;
  * @api public
  */
 
-module.exports = function(val, options) {
+module.exports = function (val, options) {
   options = options || {};
   var type = typeof val;
   if (type === 'string' && val.length > 0) {
