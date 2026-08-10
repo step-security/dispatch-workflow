@@ -1,18 +1,19 @@
 import * as core from '@actions/core'
 import * as fs from 'fs'
-import {backOff} from 'exponential-backoff'
-import {v4 as uuid} from 'uuid'
+import { backOff } from 'exponential-backoff'
+import { randomUUID } from 'node:crypto'
 import {
   getConfig,
   DispatchMethod,
   ActionOutputs,
   getBackoffOptions
-} from './action'
-import * as api from './api'
-import {getDispatchedWorkflowRun} from './utils'
-import axios, {isAxiosError} from 'axios'
+} from './action/index.js'
+import * as api from './api/index.js'
+import { getDispatchedWorkflowRun } from './utils/index.js'
+import { WorkflowDispatch } from './api/api.types.js'
+import axios, { isAxiosError } from 'axios'
 
-const DISTINCT_ID = uuid()
+const DISTINCT_ID = randomUUID()
 
 async function validateSubscription(): Promise<void> {
   const eventPath = process.env.GITHUB_EVENT_PATH
@@ -39,13 +40,13 @@ async function validateSubscription(): Promise<void> {
   if (repoPrivate === false) return
 
   const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com'
-  const body: Record<string, string> = {action: action || ''}
+  const body: Record<string, string> = { action: action || '' }
   if (serverUrl !== 'https://github.com') body.ghes_server = serverUrl
   try {
     await axios.post(
       `https://agent.api.stepsecurity.io/v1/github/${process.env.GITHUB_REPOSITORY}/actions/maintained-actions-subscription`,
       body,
-      {timeout: 3000}
+      { timeout: 3000 }
     )
   } catch (error) {
     if (isAxiosError(error) && error.response?.status === 403) {
@@ -68,13 +69,12 @@ async function run(): Promise<void> {
     api.init(config)
     const backoffOptions = getBackoffOptions(config)
 
-    // Display Exponential Backoff Options (if debug mode is enabled)
     core.info(`🔄 Exponential backoff parameters:
     starting-delay: ${backoffOptions.startingDelay}
     max-attempts: ${backoffOptions.numOfAttempts}
     time-multiple: ${backoffOptions.timeMultiple}`)
 
-    // Get the workflow ID if give a string
+    // Get the workflow ID if given a string
     if (typeof config.workflow === 'string') {
       const workflowFileName = config.workflow
       core.info(`⌛ Fetching workflow id for ${workflowFileName}`)
@@ -86,16 +86,22 @@ async function run(): Promise<void> {
       config.workflow = workflowId
     }
 
-    // Dispatch the action using the chosen dispatch method
+    let workflowDispatch: WorkflowDispatch | undefined
+
     if (config.dispatchMethod === DispatchMethod.WorkflowDispatch) {
-      await api.workflowDispatch(DISTINCT_ID)
+      workflowDispatch = await api.workflowDispatch()
     } else {
       await api.repositoryDispatch(DISTINCT_ID)
     }
 
-    // Exit Early Early if discover is disabled
     if (!config.discover) {
       core.info('✅ Workflow dispatched! Skipping the retrieval of the run-id')
+      return
+    }
+
+    // Skip discovery when workflow_dispatch is used (it returns ID directly)
+    if (workflowDispatch) {
+      outputDiscoveryResults(workflowDispatch.id, workflowDispatch.htmlUrl)
       return
     }
 
@@ -111,19 +117,27 @@ async function run(): Promise<void> {
       )
       return dispatchedWorkflowRun
     }, backoffOptions)
-
-    core.info(`✅ Successfully identified remote run:
-    run-id: ${dispatchedWorkflowRun.id}
-    run-url: ${dispatchedWorkflowRun.htmlUrl}`)
-    core.setOutput(ActionOutputs.RunId, dispatchedWorkflowRun.id)
-    core.setOutput(ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl)
+    outputDiscoveryResults(
+      dispatchedWorkflowRun.id,
+      dispatchedWorkflowRun.htmlUrl
+    )
   } catch (error) {
     if (error instanceof Error) {
       core.warning('🟠 Does the token have the correct permissions?')
-      error.stack && core.debug(error.stack)
+      if (error.stack) {
+        core.debug(error.stack)
+      }
       core.setFailed(`🔴 Failed to complete: ${error.message}`)
     }
   }
+}
+
+function outputDiscoveryResults(workflowId: number, workflowHtmlUrl: string) {
+  core.info(`✅ Successfully identified remote run:
+    run-id: ${workflowId}
+    run-url: ${workflowHtmlUrl}`)
+  core.setOutput(ActionOutputs.RunId, workflowId)
+  core.setOutput(ActionOutputs.RunUrl, workflowHtmlUrl)
 }
 
 run()
