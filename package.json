@@ -64,8 +64,5 @@
     "ts-jest": "^29.4.6",
     "ts-jest-resolver": "^2.0.1",
     "typescript": "^5.9.3"
-  },
-  "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "*"
   }
 }
