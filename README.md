@@ -19,7 +19,7 @@ There was a need for this action as currently available actions...
 
 ```yaml
 steps:
-  - uses: step-security/dispatch-workflow@v2
+  - uses: step-security/dispatch-workflow@v3
     id: workflow-dispatch
     name: 'Dispatch Workflow using workflow_dispatch Method'
     with:
@@ -41,7 +41,7 @@ steps:
 
 ```yaml
 steps:
-  - uses: step-security/dispatch-workflow@v2
+  - uses: step-security/dispatch-workflow@v3
     id: repository-dispatch
     name: 'Dispatch Workflow using repository_dispatch Method'
     with:
@@ -114,15 +114,15 @@ jobs:
 
 ## Discovery
 
-One of the drawbacks with both dispatch methods, is that they do not natively return a Run ID that allows us to query for the status of our dispatched workflow. This technical limitation is discussed more in-depth in this [community discussion](https://github.com/orgs/community/discussions/9752#discussioncomment-1964203). We can work around this by encorporating a **Distinct ID** into our dispatch event. We then have the ability to **discover** the dispatched workflow, from all workflow runs, by correlating it to the **Distinct ID**.
-
-This functionality is **disabled by default**, but can be enabled with the `discover: true` configuration. The receiving workflow must then be modified appropriated to intercept the **Distinct ID**.
+Workflow discovery is **disabled by default**, but can be enabled with the
+`discover: true` configuration. When enabled for `repository_dispatch`, the
+receiving workflow must be modified to intercept the **Distinct ID**.
 
 ### Creating Dispatch Events with Discovery
 
 ```yaml
 steps:
-  - uses: step-security/dispatch-workflow@v2
+  - uses: step-security/dispatch-workflow@v3
     id: dispatch-with-discovery
     name: "Dispatch Workflow With Discovery"
     with:
@@ -137,25 +137,11 @@ steps:
 
 ### Receiving Events with Discovery
 
+#### `repository_dispatch`
+
 On September 26, 2022, GitHub introduced the ability to set [dynamic names for workflow runs](https://github.blog/changelog/2022-09-26-github-actions-dynamic-names-for-workflow-runs/). The new `run-name` attribute will accept expressions, thus allowing us to inject the **Distinct ID** into the queryable view.
 
-The expression to expose the **Distinct ID** in the `run-name` depends on what dispatch method you are using. The included expressions have been configured in a way to return a placeholder value `N/A` if a **Distinct ID** is not available.
-
-#### `workflow_dispatch`
-
-```yaml
-name: Workflow Name
-run-name: Workflow Name [${{ inputs.distinct_id && inputs.distinct_id || 'N/A' }}]
-
-on:
-  workflow_dispatch:
-    inputs:
-      distinct_id:
-        description: 'Distinct ID'
-        required: false
-```
-
-#### `repository_dispatch`
+The `run-name` expression below injects the **Distinct ID** into the queryable view, returning a placeholder value `N/A` if one is not available.
 
 ```yaml
 name: Workflow Name
@@ -168,6 +154,19 @@ on:
   repository_dispatch:
     types:
       - deploy
+```
+
+#### `workflow_dispatch`
+
+On February 19, 2026, GitHub [announced](https://github.blog/changelog/2026-02-19-workflow-dispatch-api-now-returns-run-ids/) that the response from the `createWorkflowDispatch` API would now include the ID of the dispatched workflow. Under the `2022-11-28` API version this behaviour is activated by passing `return_run_details: true` into the request payload. From the `2026-03-10` API version onwards it becomes the default and the flag no longer needs to be passed.
+
+When using `step-security/dispatch-workflow@v3`, the `workflow_dispatch` invocation method **no longer requires** you to expose a distinct ID via the `run-name` attribute for workflow discovery.
+
+```yaml
+name: Workflow Name
+
+on:
+  workflow_dispatch:
 ```
 
 # Permissions
@@ -195,7 +194,7 @@ The below table shows the neccessary permissions for all the unique combinations
 | ---------------------------------------- | ----------------------------------- | --------------------------------------- |
 | `repository_dispatch`                    | `contents: write`                   | Private: `repo` / Public: `public_repo` |
 | `repository_dispatch` + `discover: true` | `contents: write` + `actions: read` | Private: `repo` / Public: `public_repo` |
-| `worflow_dispatch`                       | `actions: write`                    | Private: `repo` / Public: `public_repo` |
+| `workflow_dispatch`                      | `actions: write`                    | Private: `repo` / Public: `public_repo` |
 | `workflow_dispatch` + `discover: true`   | `actions: write`                    | Private: `repo` / Public: `public_repo` |
 
 # Inputs
@@ -226,7 +225,7 @@ By default, this GitHub Action has no outputs. However, when discovery mode is *
 
 ```yaml
 steps:
-  - uses: step-security/dispatch-workflow@v2
+  - uses: step-security/dispatch-workflow@v3
     id: wait-repository-dispatch
     name: 'Dispatch Using repository_dispatch Method And Wait For Run-ID'
     with:
@@ -283,12 +282,11 @@ client_payload is too large
 
 The [Create a workflow dispatch event](https://docs.github.com/en/rest/actions/workflows?apiVersion=2022-11-28#create-a-workflow-dispatch-event) API call also sets the maximum number of top-level properties in the workflow inputs JSON to **10**. Any default properties configured in the workflow file will be considered towards this count when inputs are omitted.
 
-An additional requirement is that all top-level properties **must** be a `string`. Any inputs represented as a `number` or `boolean` will get **rejected**. Therefore values of these
-types must be wrapped in **quotes** to successfully dispatch the workflow.
+An additional requirement is that all top-level properties **must** be a `string`. Any inputs represented as a `number` or `boolean` will get **rejected**. Therefore values of these types must be wrapped in **quotes** to successfully dispatch the workflow.
 
 ```yaml
 # Invalid ❌
-  - uses: step-security/dispatch-workflow@v2
+  - uses: step-security/dispatch-workflow@v3
     id: workflow-dispatch
     name: 'Dispatch Using workflow_dispatch Method'
     with:
@@ -301,7 +299,7 @@ types must be wrapped in **quotes** to successfully dispatch the workflow.
         }
 
 # Valid 🟢
-  - uses: step-security/dispatch-workflow@v2
+  - uses: step-security/dispatch-workflow@v3
     id: workflow-dispatch
     name: 'Dispatch Using workflow_dispatch Method'
     with:
@@ -325,7 +323,7 @@ When interacting with the GitHub REST API, it's beneficial to handle potential f
 - `time-multiple`: The factor by which the `starting-delay-ms` is multiplied for each reattempt, influencing the delay duration.
 
 ```yaml
-  - uses: step-security/dispatch-workflow@v2
+  - uses: step-security/dispatch-workflow@v3
     id: custom-backoff
     name: 'Dispatch with custom exponential backoff parameters'
     with:
@@ -333,4 +331,38 @@ When interacting with the GitHub REST API, it's beneficial to handle potential f
       starting-delay-ms: 150
       max-attempts: 3
       time-multiple: 1.5
+```
+
+# Migrating from `v2` to `v3`
+
+If you have enabled discovery and use `workflow_dispatch` to invoke a child workflow, remove the `run-name` attribute and `distinct_id` input from the child workflow.
+
+> **Upgrade the parent workflow first, then the child.** Once on `@v3` the parent stops sending `distinct_id`. If the child hasn't been updated yet, its run name renders as `Child Workflow [N/A]` — purely cosmetic, with no impact on behaviour.
+
+```diff
+name: Parent Workflow
+
+jobs:
+  do-work:
+    steps:
+-     - uses: step-security/dispatch-workflow@v2
++     - uses: step-security/dispatch-workflow@v3
+        id: workflow-dispatch
+        name: 'Dispatch Workflow using workflow_dispatch Method'
+        with:
+          dispatch-method: workflow_dispatch
+          workflow: child-workflow.yml
+          ...
+```
+
+```diff
+name: Child Workflow
+- run-name: Child Workflow [${{ inputs.distinct_id && inputs.distinct_id || 'N/A' }}]
+
+on:
+  workflow_dispatch:
+-   inputs:
+-     distinct_id:
+-       description: 'Distinct ID'
+-       required: false
 ```
